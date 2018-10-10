@@ -19,7 +19,7 @@ pipeline {
     environment {
         DISABLE_DOWNLOAD_PROGRESS_OPTS = '-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn '
         LINUX_MVN_RANDOM = '-Djava.security.egd=file:/dev/./urandom'
-        COVERAGE_EXCLUSIONS = '**/test/**/*,**/itests/**/*,**/*Test*,**/sdk/**/*,**/*.js,**/node_modules/**/*,**/jaxb/**/*,**/wsdl/**/*,**/nces/sws/**/*,**/*.adoc,**/*.txt,**/*.xml,**/platform-solr-server-standalone/**/*'
+        COVERAGE_EXCLUSIONS = '**/test/**/*,**/itests/**/*,**/*Test*'
         SONAR_PROJECT_KEY = 'codice-maven'
         GITHUB_USERNAME = 'codice'
         GITHUB_REPONAME = 'codice-maven'
@@ -41,11 +41,14 @@ pipeline {
                             env.PR_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD~1').trim()
                         }
                         //Clear existing status checks
-                        def jsonBlob = getGithubStatusJsonBlob("pending", "${BUILD_URL}display/redirect", "Full Build In Progress...", "CX Jenkins/Full Build")
+                        def jsonBlob = getGithubStatusJsonBlob("pending", "${BUILD_URL}display/redirect", "Linux Build In Progress...", "jenkins/build/linux")
                         postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
-                        jsonBlob = getGithubStatusJsonBlob("pending", "${BUILD_URL}display/redirect", "OWASP In Progress...", "CX Jenkins/OWASP")
+                        // The post/comment steps only work during linux builds at the moment, will add this back in after the step is platform independent
+                        //jsonBlob = getGithubStatusJsonBlob("pending", "${BUILD_URL}display/redirect", "Windows Build In Progress...", "jenkins/build/windows")
+                        //postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                        jsonBlob = getGithubStatusJsonBlob("pending", "${BUILD_URL}display/redirect", "Sonar In Progress...", "jenkins/static-analysis/sonar")
                         postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
-                        jsonBlob = getGithubStatusJsonBlob("pending", "${BUILD_URL}display/redirect", "NSP In Progress...", "CX Jenkins/NSP")
+                        jsonBlob = getGithubStatusJsonBlob("pending", "${BUILD_URL}display/redirect", "OWASP In Progress...", "jenkins/static-analysis/owasp")
                         postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
                     }
                 }
@@ -65,6 +68,27 @@ pipeline {
                         withMaven(maven: 'Maven 3.5.4', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
                               sh 'mvn install -B -DskipStatic=true -DskipTests=true $DISABLE_DOWNLOAD_PROGRESS_OPTS'
                               sh 'mvn clean install -B -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET $DISABLE_DOWNLOAD_PROGRESS_OPTS'
+                        }
+                    }
+                    post {
+                        success {
+                            withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                script {
+                                    def jsonBlob = getGithubStatusJsonBlob("success", "${BUILD_URL}display/redirect", "Linux Build Succeeded!", "jenkins/build/linux")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                                }
+                            }
+                        }
+                        failure {
+                            catchError{ junit '**/target/surefire-reports/*.xml' }
+                            catchError{ junit '**/target/failsafe-reports/*.xml' }
+                            catchError{ zip zipFile: 'PaxExamRuntimeFolder.zip', archive: true, glob: '**/target/exam/**/*' }
+                            withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                script {
+                                    def jsonBlob = getGithubStatusJsonBlob("failure", "${BUILD_URL}display/redirect", "Linux Build Failed!", "jenkins/build/linux")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                                }
+                            }
                         }
                     }
                 }
@@ -88,30 +112,33 @@ pipeline {
                               sh 'mvn clean install -B $DISABLE_DOWNLOAD_PROGRESS_OPTS'
                         }
                     }
+                    post {
+                        success {
+                            withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                script {
+                                    def jsonBlob = getGithubStatusJsonBlob("success", "${BUILD_URL}display/redirect", "Linux Build Succeeded!", "jenkins/build/linux")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                                }
+                            }
+                        }
+                        failure {
+                            catchError{ junit '**/target/surefire-reports/*.xml' }
+                            catchError{ junit '**/target/failsafe-reports/*.xml' }
+                            catchError{ zip zipFile: 'PaxExamRuntimeFolder.zip', archive: true, glob: '**/target/exam/**/*' }
+                            withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                script {
+                                    def jsonBlob = getGithubStatusJsonBlob("failure", "${BUILD_URL}display/redirect", "Linux Build Failed!", "jenkins/build/linux")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                                }
+                            }
+                        }
+                    }
                 }
                 stage ('Windows') {
                     agent { label 'server-2016-small'}
                     steps {
                         withMaven(maven: 'Maven 3.5.4', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings') {
                               bat 'mvn clean install -B %DISABLE_DOWNLOAD_PROGRESS_OPTS%'
-                        }
-                    }
-                }
-            }
-        }
-        stage('Security Analysis') {
-            parallel {
-                stage ('Owasp') {
-                    steps {
-                        withMaven(maven: 'Maven 3.5.4', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
-                            script {
-                                // If this build is not a pull request, run full owasp scan. Otherwise run incremental scan
-                                if (env.CHANGE_ID == null) {
-                                    sh 'mvn install -q -B -Powasp -DskipTests=true -DskipStatic=true $DISABLE_DOWNLOAD_PROGRESS_OPTS'
-                                } else {
-                                    sh 'mvn install -q -B -Powasp -DskipTests=true -DskipStatic=true -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET $DISABLE_DOWNLOAD_PROGRESS_OPTS'
-                                }
-                            }
                         }
                     }
                 }
@@ -135,7 +162,7 @@ pipeline {
                 }
             }
         }
-        stage('Quality Analysis') {
+        stage('Static Analysis') {
             parallel {
                 stage ('SonarCloud') {
                     steps {
@@ -146,8 +173,61 @@ pipeline {
                                     if (env.CHANGE_ID == null) {
                                         sh 'mvn -q -B -Dcheckstyle.skip=true org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONAR_TOKEN  -Dsonar.organization=codice -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.exclusions=${COVERAGE_EXCLUSIONS} $DISABLE_DOWNLOAD_PROGRESS_OPTS'
                                     } else {
-                                        sh 'mvn -q -B -Dcheckstyle.skip=true org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.github.pullRequest=${CHANGE_ID} -Dsonar.github.oauth=${SONARQUBE_GITHUB_TOKEN} -Dsonar.analysis.mode=preview -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONAR_TOKEN -Dsonar.organization=codice -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.exclusions=${COVERAGE_EXCLUSIONS} -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET $DISABLE_DOWNLOAD_PROGRESS_OPTS'
+                                        sh 'mvn -q -B -Dcheckstyle.skip=true org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.github.pullRequest=${CHANGE_ID} -Dsonar.github.repository=${GITHUB_USERNAME}/${GITHUB_REPONAME} -Dsonar.github.oauth=${SONARQUBE_GITHUB_TOKEN} -Dsonar.analysis.mode=preview -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONAR_TOKEN -Dsonar.organization=codice -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.exclusions=${COVERAGE_EXCLUSIONS} -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET $DISABLE_DOWNLOAD_PROGRESS_OPTS'
                                     }
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            script {
+                                withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                    def jsonBlob = getGithubStatusJsonBlob("success", "${BUILD_URL}display/redirect", "Sonar Succeeded!", "jenkins/static-analysis/sonar")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                                }
+                            }
+                        }
+                        failure {
+                            script {
+                                withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                    def jsonBlob = getGithubStatusJsonBlob("failure", "${BUILD_URL}display/redirect", "Sonar Failed!", "jenkins/static-analysis/sonar")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                                }
+                            }
+                        }
+                    }
+                }
+                stage ('Owasp') {
+                    steps {
+                        withMaven(maven: 'Maven 3.5.4', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
+                            script {
+                                // If this build is not a pull request, run full owasp scan. Otherwise run incremental scan
+                                if (env.CHANGE_ID == null) {
+                                    sh 'mvn install -q -B -Powasp -DskipTests=true -DskipStatic=true $DISABLE_DOWNLOAD_PROGRESS_OPTS'
+                                } else {
+                                    sh 'mvn install -q -B -Powasp -DskipTests=true -DskipStatic=true -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET $DISABLE_DOWNLOAD_PROGRESS_OPTS'
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            script {
+                                withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                    def jsonBlob = getGithubStatusJsonBlob("success", "${BUILD_URL}display/redirect", "OWASP Succeeded!", "jenkins/static-analysis/owasp")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
+                                }
+                            }
+                        }
+                        failure {
+                            //TODO: This zip approach still isn't quite working. Need to figure out why since whenever it's run and fails locally, the files are there
+                            //Might be related to PRs using gib to build PRs, so switching to a non incremental OWASP scan might help
+                            catchError{ zip zipFile: 'OWASP_Reports.zip', archive: true, glob: "target/OWASP_Reports/*" }
+                            script {
+                                withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                                    def jsonBlob = getGithubStatusJsonBlob("failure", "${BUILD_URL}display/redirect", "OWASP Failed!", "jenkins/static-analysis/owasp")
+                                    postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
                                 }
                             }
                         }
