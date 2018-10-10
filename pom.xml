@@ -44,11 +44,21 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <maven-jacoco-plugin.version>0.8.1</maven-jacoco-plugin.version>
 
         <jsr305.version>3.0.2_1</jsr305.version>
 
         <junit.version>4.12</junit.version>
+
+        <!-- Gitflow Incremental Builder Properties -->
+        <gib.referenceBranch>refs/remotes/origin/master</gib.referenceBranch>
+        <gib.baseBranch>HEAD</gib.baseBranch>
+        <gib.enabled>false</gib.enabled>
+        <gib.failOnError>false</gib.failOnError>
+
+        <!-- Maven Plugin Version Properties -->
+        <directory-maven-plugin.version>0.3.1</directory-maven-plugin.version>
+        <dependency-check-maven.version>3.1.1</dependency-check-maven.version>
+        <maven-jacoco-plugin.version>0.8.1</maven-jacoco-plugin.version>
     </properties>
 
     <scm>
@@ -96,6 +106,13 @@
     </dependencyManagement>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <artifactId>gitflow-incremental-builder</artifactId>
+                <version>3.4</version>
+            </extension>
+        </extensions>
         <pluginManagement>
             <plugins>
                 <plugin>
