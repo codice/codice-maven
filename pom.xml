@@ -17,7 +17,7 @@
 
     <groupId>org.codice.maven</groupId>
     <artifactId>codice-maven</artifactId>
-    <version>0.2</version>
+    <version>0.3-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Codice Maven</name>
     <description>Codice Maven Generic Utilities, Classes, and Plugins</description>
