@@ -11,15 +11,15 @@ public class SolrStart extends BaseSolrPlugin {
   @Override
   public void doExecute() throws MojoFailureException {
     // Try starting solr.
-    System.out.println("Starting solr");
+    getLog().info("Starting solr");
     String[] startArgs = {"start", "-p", solrPort};
     int exitCode = doSolr(startArgs);
 
-    // If it didn't start, it may be running
+    // If it didn't start
     if (exitCode != 0) {
       throw new MojoFailureException("Cannot start solr: " + exitCode);
     }
 
-    System.out.println("Solr Started");
+    getLog().info("Solr Started");
   }
 }
