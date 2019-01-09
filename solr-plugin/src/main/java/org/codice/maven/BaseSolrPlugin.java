@@ -112,11 +112,11 @@ public abstract class BaseSolrPlugin extends AbstractMojo {
       streamHandler.start();
       exitCode = executor.execute(cmd);
     } catch (ExecuteException e) {
-      getLog().error("Failed to execute: " + cmd);
+      getLog().debug("Failed to execute: " + cmd);
       getLog().debug(e.getCause());
 
     } catch (IOException e) {
-      getLog().error("IO Exception, directory likely doesn't exist: " + cmd);
+      getLog().debug("IO Exception, directory likely doesn't exist: " + cmd);
       getLog().debug(e.getCause());
 
     } finally {

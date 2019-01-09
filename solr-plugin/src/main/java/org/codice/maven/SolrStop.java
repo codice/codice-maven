@@ -1,5 +1,6 @@
 package org.codice.maven;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 
@@ -9,22 +10,21 @@ public class SolrStop extends BaseSolrPlugin {
   @Override
   public void doExecute() {
 
-    executor.setExitValues(new int[] {0, 1});
-
     // Try stopping solr.
     getLog().info("Stopping solr");
 
     String[] StopArgs = {"stop", "-p", solrPort};
     int exitCode = doSolr(StopArgs);
 
-    // If we got status code 1, we'll try again just to confirm the line-ending glitch is the cause.
+    // On linux/mac, a stop command that found no process to end returns exit code 1.
+    // On Windows it returns exit code 0.
     if (exitCode != 0) {
-      getLog().warn("Solr did not stop");
+      getLog().warn("Solr didn't stop or wasn't running");
       getLog().warn("Trying to stop solr again.");
       exitCode = doSolr(StopArgs); // Try to stop it again
 
-      // If it didn't start
-      if (exitCode != 0) {
+      // If it didn't stop, check the OS. If it's not windows, then its ok to see status code 1.
+      if (exitCode != 0 && SystemUtils.IS_OS_WINDOWS) {
         getLog().error("Solr could not be stopped.");
         return;
       }
