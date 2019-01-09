@@ -22,12 +22,6 @@
             <version>3.6.0</version>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>3.8.1</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-core</artifactId>
             <version>3.5.0</version>
@@ -47,5 +41,95 @@
             <artifactId>maven-invoker</artifactId>
             <version>3.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>ddf</groupId>
+            <artifactId>solr-distro</artifactId>
+            <version>2.13.4</version>
+            <type>zip</type>
+            <classifier>assembly</classifier>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>*</artifactId>
+                    <groupId>*</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-invoker-plugin</artifactId>
+                <configuration>
+                    <addTestClassPath>true</addTestClassPath>
+                    <cloneProjectsTo>${project.build.directory}/test/test-projects</cloneProjectsTo>
+                    <projectsDirectory>src/test/test-projects</projectsDirectory>
+                    <debug>true</debug>
+                    <showVersion>true</showVersion>
+                    <setupIncludes>
+                        <setupInclude>setup/pom.xml</setupInclude>
+                    </setupIncludes>
+                    <pomIncludes>
+                        <pomInclude>*/pom.xml</pomInclude>
+                    </pomIncludes>
+                    <preBuildHookScript>setup</preBuildHookScript>
+                    <postBuildHookScript>verify</postBuildHookScript>
+                    <properties>
+                        <maven.compiler.source>${mojo.java.target}</maven.compiler.source>
+                        <maven.compiler.target>${mojo.java.target}</maven.compiler.target>
+                    </properties>
+                    <skipInvocation>${skipTests}</skipInvocation>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>pre-integration-test</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>install</goal>
+                        </goals>
+                        <configuration>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+                <version>1.6.2</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.codehaus.groovy</groupId>
+                        <artifactId>groovy-all</artifactId>
+                        <version>2.5.5</version>
+                        <type>pom</type>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <debug>false</debug>
+                    <verbose>true</verbose>
+                    <stacktrace>true</stacktrace>
+                    <defaultScriptExtension>.groovy</defaultScriptExtension>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compileTests</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
