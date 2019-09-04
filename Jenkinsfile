@@ -11,7 +11,7 @@ pipeline {
     }
     triggers {
         /*
-          Restrict nightly builds to master branch, all others will be built on change only.
+          Restrict nightly builds to master branch only if changed, all others will be built on change only.
           Note: The BRANCH_NAME will only work with a multi-branch job using the github-branch-source
         */
         pollSCM(BRANCH_NAME == "master" ? "H H(17-19) * * *" : "")
