@@ -49,6 +49,10 @@ public class LenientLimit extends Limit {
                   ? LenientLimit.ONE
                   : new BigDecimal(minimum).subtract(LenientLimit.OFFSET))
               .toPlainString();
+      if (new BigDecimal(minimum).compareTo(LenientLimit.ZERO) < 0) {
+        // Jacoco now will enforce a validation error if the minimum is a negative number
+        minimum = LenientLimit.ZERO.toPlainString();
+      }
     }
     super.setMinimum(minimum);
   }
