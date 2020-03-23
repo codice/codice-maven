@@ -93,6 +93,9 @@ pipeline {
         }
         stage('Full Build') {
             when { expression { env.CHANGE_ID == null } }
+             options {
+                timeout(time: 3, unit: 'HOURS')
+            }
             parallel {
                 stage ('Linux') {
                     steps {
@@ -122,14 +125,6 @@ pipeline {
                         }
                     }
                 }
-                stage ('Windows') {
-                    agent { label 'server-2016-small'}
-                    steps {
-                        withMaven(maven: 'Maven 3.5.4', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings') {
-                              bat 'mvn clean install -B %DISABLE_DOWNLOAD_PROGRESS_OPTS%'
-                        }
-                    }
-                }
             }
         }
         /*
@@ -143,6 +138,8 @@ pipeline {
                     expression { env.BRANCH_NAME ==~ /((?:\d*\.)?\d*\.x|master)/ }
                     environment name: 'JENKINS_ENV', value: 'prod'
                 }
+            } options {
+                timeout(time: 3, unit: 'HOURS')
             }
             steps{
                 withMaven(maven: 'Maven 3.5.4', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
