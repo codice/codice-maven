@@ -94,7 +94,7 @@ pipeline {
         stage('Full Build') {
             when { expression { env.CHANGE_ID == null } }
              options {
-                timeout(time: 3, unit: 'HOURS')
+                timeout(time: 30, unit: 'MINUTES')
             }
             parallel {
                 stage ('Linux') {
@@ -139,7 +139,7 @@ pipeline {
                     environment name: 'JENKINS_ENV', value: 'prod'
                 }
             } options {
-                timeout(time: 3, unit: 'HOURS')
+                timeout(time: 30, unit: 'MINUTES')
             }
             steps{
                 withMaven(maven: 'Maven 3.5.4', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
