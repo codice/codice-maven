@@ -96,50 +96,45 @@ pipeline {
              options {
                 timeout(time: 30, unit: 'MINUTES')
             }
-            stage ('Linux') {
-                steps {
-                    withMaven(maven: 'Maven 3.5.4', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
-                            sh 'mvn clean install -B $DISABLE_DOWNLOAD_PROGRESS_OPTS'
-                    }
+            steps {
+                withMaven(maven: 'Maven 3.5.4', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
+                        sh 'mvn clean install -B $DISABLE_DOWNLOAD_PROGRESS_OPTS'
                 }
-                post {
-                    success {
-                        withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
-                            script {
-                                def jsonBlob = getGithubStatusJsonBlob("success", "${BUILD_URL}display/redirect", "Linux Build Succeeded!", "jenkins/build/linux")
-                                postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
-                            }
+            }
+            post {
+                success {
+                    withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                        script {
+                            def jsonBlob = getGithubStatusJsonBlob("success", "${BUILD_URL}display/redirect", "Linux Build Succeeded!", "jenkins/build/linux")
+                            postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
                         }
                     }
-                    failure {
-                        catchError{ junit '**/target/surefire-reports/*.xml' }
-                        catchError{ junit '**/target/failsafe-reports/*.xml' }
-                        catchError{ zip zipFile: 'PaxExamRuntimeFolder.zip', archive: true, glob: '**/target/exam/**/*' }
-                        withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
-                            script {
-                                def jsonBlob = getGithubStatusJsonBlob("failure", "${BUILD_URL}display/redirect", "Linux Build Failed!", "jenkins/build/linux")
-                                postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
-                            }
+                }
+                failure {
+                    catchError{ junit '**/target/surefire-reports/*.xml' }
+                    catchError{ junit '**/target/failsafe-reports/*.xml' }
+                    catchError{ zip zipFile: 'PaxExamRuntimeFolder.zip', archive: true, glob: '**/target/exam/**/*' }
+                    withCredentials([usernameColonPassword(credentialsId: 'cxbot', variable: 'GITHUB_TOKEN')]) {
+                        script {
+                            def jsonBlob = getGithubStatusJsonBlob("failure", "${BUILD_URL}display/redirect", "Linux Build Failed!", "jenkins/build/linux")
+                            postStatusToHash("${jsonBlob}", "${GITHUB_USERNAME}", "${GITHUB_REPONAME}", "${env.PR_COMMIT}", "${GITHUB_TOKEN}")
                         }
                     }
                 }
             }
         }
-        /*
-          Deploy stage will only be executed for deployable branches. These include master and any patch branch matching M.m.x format (i.e. 2.10.x, 2.9.x, etc...).
-          It will also only deploy in the presence of an environment variable JENKINS_ENV = 'prod'. This can be passed in globally from the jenkins master node settings.
-        */
         stage('Deploy') {
+             options {
+                timeout(time: 30, unit: 'MINUTES')
+            }
             when {
                 allOf {
                     expression { env.CHANGE_ID == null }
                     expression { env.BRANCH_NAME ==~ /((?:\d*\.)?\d*\.x|master)/ }
                     environment name: 'JENKINS_ENV', value: 'prod'
                 }
-            } options {
-                timeout(time: 30, unit: 'MINUTES')
-            }
-            steps{
+            } 
+            steps {
                 withMaven(maven: 'Maven 3.5.4', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LINUX_MVN_RANDOM}') {
                     sh 'mvn deploy -B -DskipStatic=true -DskipTests=true -DretryFailedDeploymentCount=10 $DISABLE_DOWNLOAD_PROGRESS_OPTS'
                 }
