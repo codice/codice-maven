@@ -59,6 +59,9 @@
         <directory-maven-plugin.version>0.3.1</directory-maven-plugin.version>
         <dependency-check-maven.version>3.1.1</dependency-check-maven.version>
         <maven-jacoco-plugin.version>0.8.5</maven-jacoco-plugin.version>
+        <maven.release.plugin.version>3.0.0-M1</maven.release.plugin.version>
+        <maven.deploy.plugin.version>3.0.0-M1</maven.deploy.plugin.version>
+
     </properties>
 
     <scm>
@@ -187,6 +190,22 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>${maven.deploy.plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>${maven.release.plugin.version}</version>
+                <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <preparationGoals>clean verify install</preparationGoals>
+                    <pushChanges>false</pushChanges>
+                </configuration>
+            </plugin>
+			
         </plugins>
     </build>
 
