@@ -47,7 +47,7 @@
 
         <jsr305.version>3.0.2_1</jsr305.version>
 
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.1</junit.version>
 
         <!-- Gitflow Incremental Builder Properties -->
         <gib.referenceBranch>refs/remotes/origin/master</gib.referenceBranch>
